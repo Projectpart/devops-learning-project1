@@ -1,0 +1,51 @@
+# docker-compose.yml — Day 5: Multi-Container Flask + Redis App
+# Run with: docker compose up
+# Stop with: docker compose down
+
+version: '3.9'
+
+# ─────────────────────────────────────────────
+# SERVICES: Each service = one container
+# ─────────────────────────────────────────────
+services:
+
+  # ── Service 1: Flask Web App ──────────────
+  web:
+    build: .                      # Build image from Dockerfile in current directory
+    container_name: flask_web     # Give container a readable name
+    ports:
+      - "5000:5000"               # host_port:container_port
+    environment:
+      - REDIS_HOST=redis          # Pass Redis hostname as env var
+      - FLASK_ENV=development     # Set Flask environment
+    depends_on:
+      - redis                     # Wait for redis service to start first
+    networks:
+      - app-network               # Join the shared custom network
+    restart: on-failure           # Auto-restart if the container crashes
+
+  # ── Service 2: Redis In-Memory Store ──────
+  redis:
+    image: redis:alpine           # Use official Redis image (lightweight alpine variant)
+    container_name: redis_cache
+    ports:
+      - "6379:6379"               # Expose Redis port (optional, for debugging)
+    volumes:
+      - redis-data:/data          # Persist Redis data even after container restart
+    networks:
+      - app-network               # Same network as web service
+    restart: always               # Always restart Redis automatically
+
+# ─────────────────────────────────────────────
+# VOLUMES: Named volumes for data persistence
+# ─────────────────────────────────────────────
+volumes:
+  redis-data:
+    driver: local                 # Store data on the local host machine
+
+# ─────────────────────────────────────────────
+# NETWORKS: Isolated bridge network for services
+# ─────────────────────────────────────────────
+networks:
+  app-network:
+    driver: bridge                # Default bridge network — containers can reach each other by service name
